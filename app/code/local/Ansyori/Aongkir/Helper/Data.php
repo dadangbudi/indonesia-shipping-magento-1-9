@@ -81,6 +81,46 @@ class Ansyori_Aongkir_Helper_Data extends Mage_Core_Helper_Abstract
 			return $this->getRates($origin,$dest,$weight,$kurir);
 		};
 	}
+	
+	public function getSavedRates2($origin,$dest,$weight,$kurir)
+	{
+		if($this->isDisabledSavedShippingRates())
+		{
+			return $this->getRates($origin,$dest,$weight,$kurir);
+		};
+
+		$enabled_servis = $this->getEnabledServices();
+
+		$enabled_servis = explode(",",$enabled_servis);
+
+		$concat_kurir_servis = '';
+
+		$array_rates = array();
+		$sql = "SELECT distinct dari,ke, harga, kurir, servis,text FROM aongkir_save_rates where dari='$origin' and ke='$dest' and kurir='$kurir' ";
+
+		$sql = $this->fetchSql($sql);
+		$count = 0;
+
+		foreach($sql as $datax) {
+			$count++;
+
+			$concat_kurir_servis = $datax['kurir'].'|'.$datax['servis'];
+
+			if(in_array($concat_kurir_servis, $enabled_servis)) {
+				$array_rates[] = array(
+				    'kunci'=> $concat_kurir_servis,
+					'text'=> $datax['text'].' - ',
+					'cost'=> $datax['harga'] * $weight
+				);
+			}
+		};
+
+		if($count) {
+			return $array_rates;
+		} else {
+			return $this->getRates($origin,$dest,$weight,$kurir);
+		};
+	}	
 
 	public function grabAllRates($refreshAll = 0)
 	{
