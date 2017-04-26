@@ -39,6 +39,7 @@ class Ansyori_Aongkir_Model_Carrier_Ongkir extends Mage_Shipping_Model_Carrier_A
 
 		$sql = "select * from ".Mage::getConfig()->getTablePrefix()."daftar_alamat where concat(type,' ',city_name) = '$string_city' limit 0,1 ";
 
+
 		$res =  $this->helper()->fetchSql($sql);
 
 		return $res[0]['city_id'];
@@ -53,22 +54,36 @@ class Ansyori_Aongkir_Model_Carrier_Ongkir extends Mage_Shipping_Model_Carrier_A
 		$carriers = $this->getActiveCarriers();
 
 		$rate_list = array();
+		
+		$cityIsFree = $this->getCityIsFree();
+			 
 
 		foreach($carriers as $kurir) {
 			if($weight > 29) {
-				$rates_by_kurir = $this->helper()->getSavedRates($origin,$dest,1,$kurir);
+				$rates_by_kurir = $this->helper()->getSavedRates2($origin,$dest,1,$kurir);
 			} else {
-				$rates_by_kurir = $this->helper()->getSavedRates($origin,$dest,$weight,$kurir);
+				$rates_by_kurir = $this->helper()->getSavedRates2($origin,$dest,$weight,$kurir);
 			};
+
+			
 			foreach($rates_by_kurir as $final_list) {
 				if($weight > 29) {
 					$ship_cost = $this->changePrice($final_list['cost']) * $weight;
 				} else {
 					$ship_cost = $this->changePrice($final_list['cost']);
 				}
+				
+				if ($cityIsFree){
+				    if ($this->getServiceIsFree($final_list['kunci'])==1) {
+				        $ship_cost=0;
+				        $texfree=" FREE";
+				    }
+				    else 
+				        $texfree="";
+				}
 
 				$rate_list[] = array(
-					'text' => $final_list['text'] . "($weight Kg)",
+					'text' => $final_list['text'] . "($weight Kg)" . $texfree,
 					'cost' => $ship_cost
 				);
 			}
@@ -133,6 +148,41 @@ class Ansyori_Aongkir_Model_Carrier_Ongkir extends Mage_Shipping_Model_Carrier_A
 	{
 		return $this->helper()->config('origin');
 	}
+	
+	public Function getCityIsFree()
+	{
+	    $string_city = Mage::getSingleton('checkout/session')->getQuote()->getShippingAddress()->getCity();
+	    $freeCities =  $this->getFreeCity();
+	    foreach($freeCities as $freecity)
+	    {
+	        if(strtoupper($freecity)==strtoupper($string_city))
+	            return 1;
+	    }
+	    return 0;
+	}
+	
+	public function getFreeCity()
+	{
+		return explode(',',$this->helper()->config('freecity'));
+	}
+	
+	public Function getServiceIsFree($service)
+	{
+	    $freeServices =  $this->getFreeService();
+	    
+	    foreach($freeServices as $freeService)
+	    {
+	        if(strtoupper($freeService)==strtoupper($service))
+	            return 1;
+	    }
+	    return 0;
+	}	
+	
+	public function getFreeService()
+	{
+		//return $this->helper()->config('freeservice');
+		return explode(',',strtolower($this->helper()->config('freeservice')));
+	}	
 
 	public function getDisabledServices()
 	{
